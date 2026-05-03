@@ -1,0 +1,44 @@
+# Core Product Rules
+
+## Product Definition
+SurplusSlot helps neighborhood cafes publish end-of-day surplus boxes with timed pickup slots and simple customer checkout.
+
+## Non-Goals (MVP)
+- No delivery logistics.
+- No complex loyalty or dynamic pricing engine.
+- No enterprise multi-tenant billing logic.
+
+## Naming and Structure
+- Frontend: `frontend/` (Next.js app router, TypeScript).
+- Backend: `backend/` (Go, chi router, SQLC-free hand-written queries for MVP).
+- Docs: `docs/`.
+- API contracts: `docs/API.md`.
+
+## API Standards
+- JSON request/response only.
+- Error shape:
+```json
+{ "error": { "code": "string", "message": "human readable", "details": {} } }
+```
+- Status codes: `200/201/204` success, `400` validation, `404` not found, `409` conflict, `500` internal.
+
+## Database Rules
+- Migrations are immutable and ordered in `backend/migrations`.
+- Every table has `created_at` and `updated_at`.
+- Add indexes for lookup and listing paths.
+
+## Testing Requirements
+- Cover critical path with tests:
+  - create offer
+  - place order with stock check
+  - confirm pickup
+
+## Documentation Requirements
+- Any feature change updates:
+  - `README.md`
+  - `docs/API.md`
+  - `docs/ASSUMPTIONS.md` if needed
+
+## Agent Constraints
+- No silent assumptions.
+- No unresolved TODOs in critical path.

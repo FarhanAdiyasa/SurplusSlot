@@ -1,0 +1,262 @@
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 40px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: var(--border);
+  padding-bottom: 24px;
+  gap: 24px;
+}
+
+.heroTitle {
+  font-size: clamp(3rem, 10vw, 5rem);
+  font-weight: 900;
+  line-height: 0.9;
+  margin: 0;
+}
+
+.heroSubtitle {
+  font-size: clamp(0.9rem, 2vw, 1.25rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.statsRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  background: var(--panel-bg);
+  border: var(--border-thin);
+  padding: 12px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  flex: 1;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 480px) 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  position: relative;
+  min-width: 0;
+}
+
+.panelTitle {
+  font-size: 1.75rem;
+  font-weight: 900;
+  margin-bottom: 24px;
+  border-bottom: var(--border-thin);
+  padding-bottom: 12px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.input,
+.textarea {
+  border: var(--border-thin);
+  padding: 12px;
+  font-family: inherit;
+  font-size: 1rem;
+  background: #fff;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.button {
+  background: var(--accent);
+  color: #fff;
+  border: var(--border-thin);
+  padding: 14px 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.1s ease;
+  width: 100%;
+}
+
+.button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--accent);
+}
+
+.buttonSecondary {
+  background: #fff;
+  color: var(--accent);
+}
+
+.offerList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.offerCard {
+  border: var(--border-thin);
+  background: #fff;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.offerTitle {
+  font-size: 1.25rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.offerPrice {
+  background: var(--accent);
+  color: #fff;
+  padding: 4px 10px;
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--panel-bg);
+  color: var(--foreground);
+  padding: 16px 24px;
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  animation: slideInRight 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.toastSuccess {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.toastError {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.toastInfo {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); }
+  to { transform: translateX(0); }
+}
+
+.reservation {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+}
+
+/* RESPONSIVE BREAKPOINTS */
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 16px;
+    gap: 24px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-bottom: 16px;
+  }
+
+  .statsRow {
+    width: 100%;
+  }
+
+  .statCard {
+    padding: 10px 16px;
+  }
+
+  .panel {
+    padding: 20px 16px;
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .heroTitle {
+    line-height: 1.1;
+  }
+}

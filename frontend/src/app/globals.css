@@ -1,0 +1,35 @@
+:root {
+  --background: #f4f4f5;
+  --foreground: #1a1a1a;
+  --panel-bg: #ffffff;
+  --accent: #2d2d2d;
+  --shadow: 8px 8px 0px #2d2d2d;
+  --shadow-sm: 4px 4px 0px #2d2d2d;
+  --border: 3px solid #2d2d2d;
+  --border-thin: 2px solid #2d2d2d;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+input, textarea, button {
+  font-family: inherit;
+}

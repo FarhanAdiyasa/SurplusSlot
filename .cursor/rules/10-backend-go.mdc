@@ -1,0 +1,27 @@
+# Backend Go Rules
+
+## Stack
+- Go 1.23+
+- `chi` router
+- `pgx/v5` for PostgreSQL
+
+## Conventions
+- Packages:
+  - `cmd/api`
+  - `internal/httpapi`
+  - `internal/store`
+  - `internal/domain`
+- Handlers validate payloads before store calls.
+- Store methods receive `context.Context`.
+
+## Error Handling
+- Map domain/store errors to API error schema.
+- Never leak raw DB errors in response.
+
+## Migrations
+- SQL up/down files with timestamp prefix.
+- Migration names describe business purpose.
+
+## Testing
+- Unit tests for validation and stock logic.
+- Integration tests for repository methods where practical.

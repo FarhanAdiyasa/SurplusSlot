@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-surplusslot}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      - db
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./backend/migrations:/migrations
+    command: >
+      sh -c "sleep 3 &&
+      psql -h db -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-surplusslot} -f /migrations/001_init.up.sql &&
+      psql -h db -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-surplusslot} -f /migrations/002_seed.up.sql"
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-surplusslot}?sslmode=disable
+      API_ADDR: :8080
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

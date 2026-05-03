@@ -1,0 +1,22 @@
+# Frontend Next.js Rules
+
+## Stack
+- Next.js 15+ App Router
+- TypeScript
+
+## Conventions
+- Routes under `app/`.
+- Shared API client in `lib/api.ts`.
+- Reusable UI in `components/`.
+
+## UX Requirements
+- All forms have validation and disabled/loading states.
+- Empty, loading, and error states required for each page.
+- Keep copy specific and action-oriented.
+
+## Data Contracts
+- Frontend types mirror documented API payloads.
+- Do not invent fields unsupported by backend.
+
+## Testing
+- At least one UI test for core order flow and one unit test for form validation logic.

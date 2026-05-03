@@ -1,0 +1,17 @@
+# AI Output Contract
+
+## Required Output on Completion
+- Completion checklist with all mandatory criteria.
+- Files touched summary.
+- Test evidence with executed commands and outcomes.
+- Known limitations and explicit next steps.
+
+## Assumption Logging
+- Any ambiguity must be captured in `docs/ASSUMPTIONS.md` with:
+  - assumption
+  - rationale
+  - impact
+
+## No Partial Delivery
+- Do not claim complete unless app is runnable and documented.
+- If a gate cannot be run locally, document exact command and expected output.
