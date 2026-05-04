@@ -36,6 +36,10 @@ export default function Home() {
   const [notification, setNotification] = useState<Notification | null>(null);
   const [orderResult, setOrderResult] = useState<Order | null>(null);
   const [mounted, setMounted] = useState(false);
+  
+  // Modal State
+  const [confirmingOffer, setConfirmingOffer] = useState<Offer | null>(null);
+  const [customerName, setCustomerName] = useState("");
 
   const notify = useCallback((text: string, type: Notification["type"] = "info") => {
     setNotification({ text, type });
@@ -104,13 +108,23 @@ export default function Home() {
     }
   };
 
-  const buy = async (offer: Offer) => {
+  const startReservation = (offer: Offer) => {
+    setConfirmingOffer(offer);
+    setCustomerName("");
+  };
+
+  const confirmOrder = async () => {
+    if (!confirmingOffer) return;
+    
     setNotification(null);
     setOrderResult(null);
+    const offerToBuy = confirmingOffer;
+    setConfirmingOffer(null);
+
     try {
       const result = await api.createOrder({
-        offerId: offer.id,
-        customerName: "Walk-in Customer",
+        offerId: offerToBuy.id,
+        customerName: customerName || "Guest User",
         customerEmail: "customer@example.com",
         quantity: 1,
       });
@@ -214,7 +228,7 @@ export default function Home() {
                   <span>Stock: {offer.stock}</span>
                   <span>Until: {mounted ? new Date(offer.pickupEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}</span>
                 </div>
-                <button className={styles.button} onClick={() => buy(offer)} disabled={offer.stock < 1}>
+                <button className={styles.button} onClick={() => startReservation(offer)} disabled={offer.stock < 1}>
                   Reserve Now
                 </button>
               </article>
@@ -248,6 +262,36 @@ export default function Home() {
             )}
           </div>
         </section>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmingOffer && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <h2 className={styles.panelTitle}>Confirm Reservation</h2>
+            <p>You are about to reserve <strong>{confirmingOffer.title}</strong> from <strong>{confirmingOffer.merchant}</strong> for <strong>${(confirmingOffer.priceCents/100).toFixed(2)}</strong>.</p>
+            
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Your Name</label>
+              <input 
+                className={styles.input} 
+                placeholder="Enter your name" 
+                value={customerName} 
+                onChange={(e) => setCustomerName(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className={styles.modalActions}>
+              <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={() => setConfirmingOffer(null)}>
+                Cancel
+              </button>
+              <button className={styles.button} onClick={confirmOrder}>
+                Confirm & Pay
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {notification && (
