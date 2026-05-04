@@ -1,45 +1,67 @@
 "use client";
 
-import { FormEvent, useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api, Offer, Order } from "@/lib/api";
 import styles from "./page.module.css";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Notification = {
   text: string;
   type: "success" | "error" | "info";
 };
 
-type OfferForm = {
-  merchant: string;
-  title: string;
-  description: string;
-  priceCents: number;
-  stock: number;
-  pickupStart: string;
-  pickupEnd: string;
-};
+function CountdownTimer({ targetDate }: { targetDate: string }) {
+  const [timeLeft, setTimeLeft] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
 
-const initialForm: OfferForm = {
-  merchant: "",
-  title: "",
-  description: "",
-  priceCents: 500,
-  stock: 10,
-  pickupStart: "",
-  pickupEnd: "",
-};
+  useEffect(() => {
+    const calculate = () => {
+      const difference = new Date(targetDate).getTime() - new Date().getTime();
+      if (difference <= 0) {
+        setTimeLeft("EXPIRED");
+        setIsUrgent(true);
+        return;
+      }
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+      setIsUrgent(difference < 30 * 60 * 1000);
+      setTimeLeft(`${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds}s`);
+    };
+    calculate();
+    const timer = setInterval(calculate, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  return (
+    <span style={{ color: isUrgent ? "#ef4444" : "inherit", fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
+      {timeLeft}
+    </span>
+  );
+}
+
+function OfferSkeleton() {
+  return (
+    <div className={`${styles.offerCard} ${styles.skeleton}`} style={{ height: '240px' }}>
+      <div style={{ height: '30px', width: '60%', background: '#ccc', marginBottom: '10px' }} />
+      <div style={{ height: '20px', width: '40%', background: '#ccc', marginBottom: '20px' }} />
+      <div style={{ height: '60px', width: '100%', background: '#ccc', marginBottom: '20px' }} />
+      <div style={{ height: '40px', width: '100%', background: '#ccc' }} />
+    </div>
+  );
+}
 
 export default function Home() {
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [offerForm, setOfferForm] = useState<OfferForm>(initialForm);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<Notification | null>(null);
   const [orderResult, setOrderResult] = useState<Order | null>(null);
   const [mounted, setMounted] = useState(false);
   
-  // Modal State
   const [confirmingOffer, setConfirmingOffer] = useState<Offer | null>(null);
   const [customerName, setCustomerName] = useState("");
+  const [quantity, setQuantity] = useState(1);
 
   const notify = useCallback((text: string, type: Notification["type"] = "info") => {
     setNotification({ text, type });
@@ -53,37 +75,16 @@ export default function Home() {
     } catch (err: any) {
       notify(`Failed to load: ${err.message}`, "error");
     } finally {
-      setLoading(false);
+      // Small delay for smooth transition from skeleton
+      setTimeout(() => setLoading(false), 800);
     }
   };
 
   useEffect(() => {
     setMounted(true);
-    let active = true;
-    const run = async () => {
-      setLoading(true);
-      try {
-        const result = await api.listOffers();
-        if (active) {
-          setOffers(result.offers);
-        }
-      } catch (err: any) {
-        if (active) {
-          notify(`System offline: ${err.message || "Unknown error"}`, "error");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-    void run();
-    return () => {
-      active = false;
-    };
+    loadOffers();
   }, [notify]);
 
-  // Auto-dismiss notification
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 5000);
@@ -91,34 +92,17 @@ export default function Home() {
     }
   }, [notification]);
 
-  const submitOffer = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setNotification(null);
-    try {
-      await api.createOffer({
-        ...offerForm,
-        pickupStart: new Date(offerForm.pickupStart).toISOString(),
-        pickupEnd: new Date(offerForm.pickupEnd).toISOString(),
-      });
-      notify("Offer published successfully", "success");
-      setOfferForm(initialForm);
-      await loadOffers();
-    } catch {
-      notify("Failed to publish offer", "error");
-    }
-  };
-
   const startReservation = (offer: Offer) => {
     setConfirmingOffer(offer);
     setCustomerName("");
+    setQuantity(1);
   };
 
   const confirmOrder = async () => {
     if (!confirmingOffer) return;
-    
-    setNotification(null);
     setOrderResult(null);
     const offerToBuy = confirmingOffer;
+    const buyQty = quantity;
     setConfirmingOffer(null);
 
     try {
@@ -126,13 +110,14 @@ export default function Home() {
         offerId: offerToBuy.id,
         customerName: customerName || "Guest User",
         customerEmail: "customer@example.com",
-        quantity: 1,
+        quantity: buyQty,
       });
       setOrderResult(result.order);
-      notify("Box reserved! Check your pickup code", "success");
+      notify(`Reserved ${buyQty} box(es)! Show your code at pickup.`, "success");
       await loadOffers();
     } catch {
-      notify("Reservation failed. Try again", "error");
+      notify("Reservation failed. Out of stock?", "error");
+      await loadOffers();
     }
   };
 
@@ -147,163 +132,158 @@ export default function Home() {
     }
   };
 
-  const getToastClass = () => {
-    if (!notification) return "";
-    switch (notification.type) {
-      case "success": return styles.toastSuccess;
-      case "error": return styles.toastError;
-      default: return styles.toastInfo;
-    }
-  };
-
   return (
-    <main className={styles.page}>
+    <motion.main 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={styles.page}
+    >
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.heroTitle}>Surplus<br />Slot</h1>
-          <p className={styles.heroSubtitle}>Rescue Boxes • Timed Pickup • Zero Waste</p>
-        </div>
+        <motion.div initial={{ x: -20 }} animate={{ x: 0 }}>
+          <h1 className={styles.heroTitle}>Rescue<br />Boxes</h1>
+          <p className={styles.heroSubtitle}>Find end-of-day surplus near you.</p>
+        </motion.div>
         <div className={styles.statsRow}>
           <div className={styles.statCard}>
-            <span className={styles.statLabel}>Active Boxes</span>
-            <span className={styles.statValue}>{offers?.length || 0}</span>
+            <span className={styles.statLabel}>Available</span>
+            <span className={styles.statValue}>{loading ? "..." : offers?.length}</span>
           </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Status</span>
-            <span className={styles.statValue}>{loading ? "..." : "Online"}</span>
-          </div>
+          <Link href="/merchant" className={styles.button} style={{ width: 'auto', background: '#fff', color: 'var(--accent)' }}>
+            I'm a Merchant →
+          </Link>
         </div>
       </header>
 
-      <div className={styles.grid}>
-        <aside className={styles.panel}>
-          <h2 className={styles.panelTitle}>Publish</h2>
-          <form onSubmit={submitOffer} className={styles.form}>
-            <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>Merchant</label>
-              <input className={styles.input} required placeholder="Cafe Name" value={offerForm.merchant} onChange={(e) => setOfferForm({ ...offerForm, merchant: e.target.value })} />
-            </div>
-            <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>Title</label>
-              <input className={styles.input} required placeholder="e.g. Pastry Box" value={offerForm.title} onChange={(e) => setOfferForm({ ...offerForm, title: e.target.value })} />
-            </div>
-            <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>Description</label>
-              <textarea className={styles.textarea} placeholder="What's inside?" value={offerForm.description} onChange={(e) => setOfferForm({ ...offerForm, description: e.target.value })} />
-            </div>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Price ($)</label>
-              <input className={styles.input} type="number" min={0} step={0.01} required value={offerForm.priceCents / 100} onChange={(e) => setOfferForm({ ...offerForm, priceCents: Math.round(Number(e.target.value) * 100) })} />
-            </div>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Stock</label>
-              <input className={styles.input} type="number" min={1} required value={offerForm.stock} onChange={(e) => setOfferForm({ ...offerForm, stock: Number(e.target.value) })} />
-            </div>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Pickup Start</label>
-              <input className={styles.input} type="datetime-local" required value={offerForm.pickupStart} onChange={(e) => setOfferForm({ ...offerForm, pickupStart: e.target.value })} />
-            </div>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Pickup End</label>
-              <input className={styles.input} type="datetime-local" required value={offerForm.pickupEnd} onChange={(e) => setOfferForm({ ...offerForm, pickupEnd: e.target.value })} />
-            </div>
-            <button className={`${styles.button} ${styles.fullWidth}`} type="submit">Create Offer</button>
-          </form>
-        </aside>
-
-        <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Available</h2>
-          <div className={styles.offerList}>
-            {offers?.map((offer) => (
-              <article key={offer.id} className={styles.offerCard}>
-                <div className={styles.offerHeader}>
-                  <div>
-                    <h3 className={styles.offerTitle}>{offer.title}</h3>
-                    <p className={styles.offerMerchant}>{offer.merchant}</p>
+      <section className={styles.panel}>
+        <div className={styles.offerList} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+          {loading ? (
+            <>
+              <OfferSkeleton />
+              <OfferSkeleton />
+              <OfferSkeleton />
+            </>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {offers?.map((offer) => (
+                <motion.article 
+                  key={offer.id} 
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className={styles.offerCard}
+                >
+                  <div className={styles.offerHeader}>
+                    <div>
+                      <h3 className={styles.offerTitle}>{offer.title}</h3>
+                      <p className={styles.offerMerchant}>{offer.merchant}</p>
+                    </div>
+                    <div className={styles.offerPrice}>${(offer.priceCents / 100).toFixed(2)}</div>
                   </div>
-                  <div className={styles.offerPrice}>${(offer.priceCents / 100).toFixed(2)}</div>
-                </div>
-                <p className={styles.offerDescription}>{offer.description}</p>
-                <div className={styles.offerMeta}>
-                  <span>Stock: {offer.stock}</span>
-                  <span>Until: {mounted ? new Date(offer.pickupEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}</span>
-                </div>
-                <button className={styles.button} onClick={() => startReservation(offer)} disabled={offer.stock < 1}>
-                  Reserve Now
-                </button>
-              </article>
-            ))}
-            {!loading && (offers?.length === 0 || !offers) && (
-              <p style={{ gridColumn: '1/-1', textAlign: 'center', opacity: 0.5, padding: '40px' }}>No active boxes available right now.</p>
-            )}
-          </div>
-        </section>
-      </div>
+                  <p className={styles.offerDescription}>{offer.description}</p>
+                  <div className={styles.offerMeta}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span className={styles.label}>Stock</span>
+                      <span style={{ fontWeight: 900, fontSize: '1.2rem' }}>{offer.stock}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
+                      <span className={styles.label}>Ends In</span>
+                      <CountdownTimer targetDate={offer.pickupEnd} />
+                    </div>
+                  </div>
+                  <button className={styles.button} onClick={() => startReservation(offer)} disabled={offer.stock < 1}>
+                    Reserve Now
+                  </button>
+                </motion.article>
+              ))}
+            </AnimatePresence>
+          )}
+          {!loading && offers?.length === 0 && (
+            <p style={{ gridColumn: '1/-1', textAlign: 'center', opacity: 0.5, padding: '80px' }}>No active boxes available right now. Check back later!</p>
+          )}
+        </div>
+      </section>
 
       {orderResult && (
-        <section className={`${styles.panel} ${styles.reservation}`}>
-          <div className={styles.reservationGroup}>
-            <label className={styles.label}>Order ID</label>
-            <p className={styles.orderId}>{mounted ? orderResult.id : "..."}</p>
-          </div>
+        <motion.section 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className={`${styles.panel} ${styles.reservation}`}
+        >
+          <h2 className={styles.panelTitle}>Active Reservation</h2>
           <div className={styles.reservationGroup}>
             <label className={styles.label}>Pickup Code</label>
-            <p className={styles.pickupCode}>{mounted ? orderResult.pickupCode : "..."}</p>
+            <p className={styles.pickupCode} style={{ fontSize: '2.5rem', color: 'var(--accent)' }}>{mounted ? orderResult.pickupCode : "..."}</p>
+          </div>
+          <div className={styles.reservationGroup}>
+            <label className={styles.label}>Qty</label>
+            <p className={styles.orderId}>{orderResult.quantity} Box(es)</p>
           </div>
           <div className={styles.reservationGroup}>
             <label className={styles.label}>Status</label>
             <p className={styles.orderStatus}>{mounted ? orderResult.status : "..."}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gridColumn: '1/-1' }}>
             {orderResult.status !== "picked_up" && (
               <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={confirmPickup} style={{ width: '100%' }}>
                 Confirm Pickup
               </button>
             )}
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* Confirmation Modal */}
-      {confirmingOffer && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <h2 className={styles.panelTitle}>Confirm Reservation</h2>
-            <p>You are about to reserve <strong>{confirmingOffer.title}</strong> from <strong>{confirmingOffer.merchant}</strong> for <strong>${(confirmingOffer.priceCents/100).toFixed(2)}</strong>.</p>
-            
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Your Name</label>
-              <input 
-                className={styles.input} 
-                placeholder="Enter your name" 
-                value={customerName} 
-                onChange={(e) => setCustomerName(e.target.value)}
-                autoFocus
-              />
-            </div>
+      <AnimatePresence>
+        {confirmingOffer && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={styles.modalOverlay}
+          >
+            <motion.div 
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.5 }}
+              className={styles.modal}
+            >
+              <h2 className={styles.panelTitle}>Confirm Order</h2>
+              <p>Reserving <strong>{confirmingOffer.title}</strong> from <strong>{confirmingOffer.merchant}</strong>.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label}>Name</label>
+                  <input className={styles.input} placeholder="Your name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} autoFocus />
+                </div>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label}>Qty</label>
+                  <input className={styles.input} type="number" min={1} max={confirmingOffer.stock} value={quantity} onChange={(e) => setQuantity(Math.min(confirmingOffer.stock, Math.max(1, Number(e.target.value))))} />
+                </div>
+              </div>
+              <div style={{ background: '#f0f0f0', padding: '12px', border: 'var(--border-thin)', textAlign: 'right' }}>
+                <span className={styles.label}>Total: </span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>${((confirmingOffer.priceCents * quantity) / 100).toFixed(2)}</span>
+              </div>
+              <div className={styles.modalActions}>
+                <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={() => setConfirmingOffer(null)}>Cancel</button>
+                <button className={styles.button} onClick={confirmOrder}>Reserve</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className={styles.modalActions}>
-              <button className={`${styles.button} ${styles.buttonSecondary}`} onClick={() => setConfirmingOffer(null)}>
-                Cancel
-              </button>
-              <button className={styles.button} onClick={confirmOrder}>
-                Confirm & Pay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {notification && (
-        <div className={`${styles.toast} ${getToastClass()}`}>
-          <span>
-            {notification.type === "success" && "✓ "}
-            {notification.type === "error" && "⚠ "}
-            {notification.type === "info" && "ℹ "}
-          </span>
-          {notification.text}
-        </div>
-      )}
-    </main>
+      <AnimatePresence>
+        {notification && (
+          <motion.div 
+            initial={{ x: 100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 100, opacity: 0 }}
+            className={`${styles.toast} ${notification.type === "success" ? styles.toastSuccess : styles.toastError}`}
+          >
+            {notification.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.main>
   );
 }
