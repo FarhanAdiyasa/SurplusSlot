@@ -145,9 +145,12 @@ export default function Home() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.heroTitle}>Surplus<br />Slot</h1>
-          <p className={styles.heroSubtitle}>Rescue Boxes • Timed Pickup • Zero Waste</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <img src="/icon.png" alt="Logo" className={styles.logo} />
+          <div>
+            <h1 className={styles.heroTitle}>Surplus<br />Slot</h1>
+            <p className={styles.heroSubtitle}>Rescue Boxes • Timed Pickup • Zero Waste</p>
+          </div>
         </div>
         <div className={styles.statsRow}>
           <div className={styles.statCard}>
